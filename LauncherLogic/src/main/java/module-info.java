@@ -1,0 +1,3 @@
+module work.lclpnet.launcherlogic {
+	
+}
