@@ -6,18 +6,30 @@
  * User Manual available at https://docs.gradle.org/6.0/userguide/java_library_plugin.html
  */
 
-apply plugin: 'java-library'
-
 repositories {
-    // Use jcenter for resolving dependencies.
-    // You can declare any Maven/Ivy/file repository here.
     jcenter()
+    mavenCentral()
 }
+
+apply plugin: 'java-library'
+apply plugin: "eclipse"
 
 dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:28.0-jre'
+    implementation 'info.picocli:picocli:4.2.0'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
+}
+
+eclipse.classpath.file {
+    whenMerged {
+        entries.findAll { isModule(it) }.each { it.entryAttributes['module'] = 'true' }
+    }
+}
+
+boolean isModule(entry) {
+    // filter java 9 modules
+    entry.kind == 'lib'  // Only libraries can be modules
 }

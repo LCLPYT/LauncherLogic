@@ -1,5 +1,8 @@
 package work.lclpnet.launcherlogic;
 
+import picocli.CommandLine.Command;
+
+@Command
 public class LauncherLogic {
 
 	public static void main(String[] args) {
