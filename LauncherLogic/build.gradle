@@ -6,18 +6,22 @@
  * User Manual available at https://docs.gradle.org/6.0/userguide/java_library_plugin.html
  */
 
+plugins {
+    id "java-library"
+    id "eclipse"
+    id "org.beryx.jlink" version "2.19.0"
+}
+
 repositories {
     jcenter()
     mavenCentral()
 }
 
-apply plugin: 'java-library'
-apply plugin: "eclipse"
-
 dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation 'com.google.guava:guava:28.0-jre'
     implementation 'info.picocli:picocli:4.2.0'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'org.jsoup:jsoup:1.13.1'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
@@ -33,3 +37,24 @@ boolean isModule(entry) {
     // filter java 9 modules
     entry.kind == 'lib'  // Only libraries can be modules
 }
+
+compileJava {
+    inputs.property("moduleName", "work.lclpnet.launcherlogic")
+    doFirst {
+        options.compilerArgs = [
+            '--module-path', classpath.asPath,
+            '--add-modules', 'info.picocli',
+            '--add-modules', 'com.google.gson',
+            '--add-modules', 'org.jsoup'
+        ]
+        classpath = files()
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'work.lclpnet.launcherlogic.LauncherLogic'
+    }
+}
+
+mainClassName = 'work.lclpnet.launcherlogic/work.lclpnet.launcherlogic.LauncherLogic'

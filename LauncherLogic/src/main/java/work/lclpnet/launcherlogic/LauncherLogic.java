@@ -1,24 +1,39 @@
 package work.lclpnet.launcherlogic;
 
-import picocli.CommandLine.Command;
+import java.util.concurrent.Callable;
 
-@Command
-public class LauncherLogic {
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import work.lclpnet.launcherlogic.cmd.CommandEcho;
+import work.lclpnet.launcherlogic.cmd.CommandInstall;
+
+@Command(
+		name = "java -jar LauncherLogic.jar", 
+		mixinStandardHelpOptions = true, 
+		version = LauncherLogic.VERSION, 
+		description = "Main command for launcher logic.",
+		subcommands = {
+				CommandEcho.class,
+				CommandInstall.class
+		}
+		)
+public class LauncherLogic implements Callable<Integer>{
+
+	public static final String VERSION = "1.0";
+	public static final boolean DEBUG = true;
+	private static LauncherLogic instance = null;
 
 	public static void main(String[] args) {
-		System.out.println("Using Java version " + System.getProperty("java.version") + "...");
-		
-		if(args.length > 0) {
-			System.err.println("welp. an argument was passed...");
-			System.exit(1);
-			return;
-		}
-		
-		System.out.println("Hello from java!");
+		args = new String[] {"install", "ls5", "C:\\Users\\Lukas\\Desktop\\install", "--debug"};
+		System.out.println("Running LauncherLogic version " + VERSION + " using java " + System.getProperty("java.version"));
+
+		instance = new LauncherLogic();
+		System.exit(new CommandLine(instance).execute(args));
 	}
-	
-	public static boolean test() {
-		return true;
+
+	@Override
+	public Integer call() throws Exception {
+		return 0;
 	}
 	
 }
