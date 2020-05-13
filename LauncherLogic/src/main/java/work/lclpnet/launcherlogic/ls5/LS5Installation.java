@@ -78,6 +78,10 @@ public class LS5Installation extends ConfigureableInstallation{
 
 		System.out.println("Injecting game profile...");
 		injectProfile(baseDir);
+		
+		System.out.println("Deleting required folders...");
+		deleteRelevantFolders(baseDir);
+		System.out.println("Deletion complete.");
 
 		System.out.println("Downloading game directory resources...");
 		downloadResources(resourcesFile);
@@ -97,8 +101,12 @@ public class LS5Installation extends ConfigureableInstallation{
 		installMods(baseDir, tmp);
 
 		System.out.println("Deleting temporary files...");
-		//FileUtils.recursiveDelete(tmp);
+		FileUtils.recursiveDelete(tmp);
 		if(tmp.exists()) System.out.println("WARNING: The tmp folder could not be deleted entirely.");
+	}
+
+	private void deleteRelevantFolders(File baseDir) {
+		FileUtils.recursiveDelete(new File(baseDir, "mods"));
 	}
 
 	private void installMods(File baseDir, File tmp) throws Exception {
