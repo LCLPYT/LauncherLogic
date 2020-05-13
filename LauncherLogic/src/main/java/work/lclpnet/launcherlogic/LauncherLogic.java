@@ -24,9 +24,10 @@ public class LauncherLogic implements Callable<Integer>{
 	private static LauncherLogic instance = null;
 
 	public static void main(String[] args) {
-		args = new String[] {"install", "ls5", "C:\\Users\\Lukas\\Desktop\\install", "--debug"};
 		System.out.println("Running LauncherLogic version " + VERSION + " using java " + System.getProperty("java.version"));
 
+		if(args.length <= 0) System.out.println("Supply '--help' as argument to get help.");
+		
 		instance = new LauncherLogic();
 		System.exit(new CommandLine(instance).execute(args));
 	}

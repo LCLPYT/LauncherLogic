@@ -78,7 +78,7 @@ public class LS5Installation extends ConfigureableInstallation{
 
 		System.out.println("Injecting game profile...");
 		injectProfile(baseDir);
-		
+
 		System.out.println("Deleting required folders...");
 		deleteRelevantFolders(baseDir);
 		System.out.println("Deletion complete.");
@@ -120,30 +120,34 @@ public class LS5Installation extends ConfigureableInstallation{
 		Modifications modifications = modConfig.getModifications();
 		for(Modification mod : modifications.getMods()) {
 			File tmpDest = new File(mod.getSha256() != null ? tmpModsDir : modsDir, mod.getName());
-			System.out.println(tmpDest);
 
-			System.out.println("Downloading '" + mod.getName() + "' from '" + mod.getUrl() + "'...");
-			try(InputStream in = new URL(mod.getUrl()).openStream();
-					OutputStream out = new FileOutputStream(tmpDest)) {
-				in.transferTo(out);
-			}
-			System.out.println("'" + mod.getName() + "' downloaded.");
-
-			if(mod.getSha256() != null) {
-				System.out.println("Validating modification file with SHA256 " + mod.getSha256() + " ...");
-				String sha256 = ChecksumUtil.getSha256(tmpDest);
-
-				if(!mod.getSha256().equals(sha256)) throw new SecurityException("Checksum mismatching for mod '" + mod.getName() + "'.");
-
-				System.out.println("Modification file '" + mod.getName() + "' is valid.");
-
-				System.out.println("Installing modification '" + mod.getName() + "' ...");
-				File dest = new File(modsDir, mod.getName());
-				try (InputStream in = new FileInputStream(tmpDest);
-						OutputStream out = new FileOutputStream(dest)) {
+			try {
+				System.out.println("Downloading '" + mod.getName() + "' from '" + mod.getUrl() + "'...");
+				try(InputStream in = new URL(mod.getUrl()).openStream();
+						OutputStream out = new FileOutputStream(tmpDest)) {
 					in.transferTo(out);
 				}
-				System.out.println("Modification '" + mod.getName() + "' installed.");
+				System.out.println("'" + mod.getName() + "' downloaded.");
+
+				if(mod.getSha256() != null) {
+					System.out.println("Validating modification file with SHA256 " + mod.getSha256() + " ...");
+					String sha256 = ChecksumUtil.getSha256(tmpDest);
+
+					if(!mod.getSha256().equals(sha256)) throw new SecurityException("Checksum mismatching for mod '" + mod.getName() + "'.");
+
+					System.out.println("Modification file '" + mod.getName() + "' is valid.");
+
+					System.out.println("Installing modification '" + mod.getName() + "' ...");
+					File dest = new File(modsDir, mod.getName());
+					try (InputStream in = new FileInputStream(tmpDest);
+							OutputStream out = new FileOutputStream(dest)) {
+						in.transferTo(out);
+					}
+					System.out.println("Modification '" + mod.getName() + "' installed.");
+				}
+			} catch (Exception e) {
+				if(CommandInstall.debugMode || !mod.isOptional()) throw e;
+				else System.err.println("Optional modification '" + mod.getName() + "' could not be installed. Installation will continue.");
 			}
 		}
 
@@ -171,8 +175,6 @@ public class LS5Installation extends ConfigureableInstallation{
 			ZIPUtil.extract(otherDest, modsDir);
 			System.out.println("Successfully extracted other mods into the mods directory.");
 		}
-
-
 	}
 
 	private void downloadOptifine(File baseDir) throws Exception {
