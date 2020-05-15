@@ -9,7 +9,7 @@ import work.lclpnet.launcherlogic.LauncherLogic;
 public class FileUtils {
 
 	public static void recursiveDelete(File file) {
-		if (file == null) return;
+		if (file == null || !file.exists()) return;
 
 		if (file.isDirectory()) { 
 			File[] files = file.listFiles();
@@ -25,7 +25,7 @@ public class FileUtils {
 	}
 
 	public static void delete(File file) {
-		if (!file.delete()) System.err.println("Unable to delete file '" + file.getAbsolutePath() + "'.");
+		if (file.exists() && !file.delete()) System.err.println("Unable to delete file '" + file.getAbsolutePath() + "'.");
 	}
 	
 	public static File getMCDir() {
