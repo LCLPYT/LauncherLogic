@@ -33,30 +33,35 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
-import work.lclpnet.launcherlogic.LauncherLogic;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
-import work.lclpnet.launcherlogic.install.ConfigureableInstallation;
+import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
 import work.lclpnet.launcherlogic.install.SimpleConfiguration;
 import work.lclpnet.launcherlogic.util.ChecksumUtil;
 import work.lclpnet.launcherlogic.util.FileUtils;
 import work.lclpnet.launcherlogic.util.ImageUtil;
+import work.lclpnet.launcherlogic.util.NetworkUtil;
+import work.lclpnet.launcherlogic.util.Progress;
 import work.lclpnet.launcherlogic.util.URLUtil;
 import work.lclpnet.launcherlogic.util.ZIPUtil;
 
-public class LS5Installation extends ConfigureableInstallation{
+public class LS5Installation extends ProgressableConfigureableInstallation {
 
 	private static final String optionsURL = "https://lclpnet.work/dl/installation-ls5-options", //TODO maybe create own page to manage...?
 			iconURL = "https://lclpnet.work/dl/ls5-profile-icon",
 			resourcesURL = "https://lclpnet.work/dl/ls5-gamedir-resources";
 
 	public LS5Installation() {
-		super("ls5", optionsURL);
+		super("ls5", optionsURL, 10, CommandInstall::getPcHost, CommandInstall::getPcPort);
 	}
 
 	@Override
 	public void installInto(File baseDir) throws Exception {
+		if(super.commandDelegate == null) throw new IllegalAccessError("No command delegate was set. Set it with InstallationObject#setCommandDelegate(CommandInstall)");
+		
 		loadConfig(LS5Configuration.class);
 		SimpleConfiguration config = (SimpleConfiguration) super.config;
+
+		setupProgress();
 
 		String forgeInstaller = (String) config.getVariable("forgeInstaller");
 
@@ -64,31 +69,42 @@ public class LS5Installation extends ConfigureableInstallation{
 				dest = new File(tmp, "forge_installer.jar"),
 				resourcesFile = new File(tmp, "gamdir_resources.zip");
 
-		if(LauncherLogic.DEBUG) {
-			tmp.mkdirs();
-			if(!dest.exists()) downloadForgeInstaller(forgeInstaller, dest);
-		} else {
-			if(tmp.exists()) FileUtils.recursiveDelete(tmp);
-			tmp.mkdirs();
-			downloadForgeInstaller(forgeInstaller, dest);
-		}
+		progress.nextStep("Preparing installation");
+		if(tmp.exists()) FileUtils.recursiveDelete(tmp);
+		tmp.mkdirs();
+		progress.update(1D);
 
+		progress.nextStep("Downloading Forge installer");
+		downloadForgeInstaller(forgeInstaller, dest);
+		progress.update(1D);
+
+		progress.nextStep("Installing Forge");
 		System.out.println("Installing forge...");
 		installForge(dest);
+		progress.update(1D);
 
+		progress.nextStep("Injecting game profile");
 		System.out.println("Injecting game profile...");
 		injectProfile(baseDir);
+		progress.update(1D);
 
+		progress.nextStep("Deleting required directories");
 		System.out.println("Deleting required folders...");
 		deleteRelevantFolders(baseDir);
 		System.out.println("Deletion complete.");
+		progress.update(1D);
 
+		progress.nextStep("Downloading resources");
 		System.out.println("Downloading game directory resources...");
 		downloadResources(resourcesFile);
+		progress.update(1D);
 
+		progress.nextStep("Extracting resources");
 		System.out.println("Extracting game directory resources...");
 		extractResources(resourcesFile, baseDir);
+		progress.update(1D);
 
+		progress.nextStep("Downloading optifine");
 		try {
 			System.out.println("Downloading optifine... (optional)");
 			downloadOptifine(baseDir);
@@ -96,13 +112,38 @@ public class LS5Installation extends ConfigureableInstallation{
 			if(CommandInstall.debugMode) throw e;
 			else System.err.println("Optifine could not be installed. Installation will continue.");
 		}
+		progress.update(1D);
 
+		//progress.nextStep("Installing Mods"); this is not necessary, since the mods will have their own steps. When there are more progress bars, re-enable this.
 		System.out.println("Installing mods...");
 		installMods(baseDir, tmp);
+		//progress.update(1D);
 
+		progress.nextStep("Cleaning up");
 		System.out.println("Deleting temporary files...");
 		FileUtils.recursiveDelete(tmp);
 		if(tmp.exists()) System.out.println("WARNING: The tmp folder could not be deleted entirely.");
+		progress.update(1D);
+		
+		progress.end();
+	}
+
+	private void setupProgress() throws IOException {
+		LS5Configuration modConfig = (LS5Configuration) super.config;
+		Modifications modifications = modConfig.getModifications();
+
+		try {
+			super.connectProgress();
+		} catch (Exception e) {
+			if(CommandInstall.debugMode) throw e;
+			else {
+				this.progress = new Progress();
+				System.out.println("WARNING: Could not connect to the progress callback server. Installation will continue without progress callback.");
+			}
+		}
+
+		this.progress.steps += modifications.getMods().size();
+		this.progress.initialPrint();
 	}
 
 	private void deleteRelevantFolders(File baseDir) {
@@ -119,14 +160,13 @@ public class LS5Installation extends ConfigureableInstallation{
 
 		Modifications modifications = modConfig.getModifications();
 		for(Modification mod : modifications.getMods()) {
+			progress.nextStep("Downloading '" + mod.getName() + "'");
+
 			File tmpDest = new File(mod.getSha256() != null ? tmpModsDir : modsDir, mod.getName());
 
 			try {
 				System.out.println("Downloading '" + mod.getName() + "' from '" + mod.getUrl() + "'...");
-				try(InputStream in = new URL(mod.getUrl()).openStream();
-						OutputStream out = new FileOutputStream(tmpDest)) {
-					in.transferTo(out);
-				}
+				NetworkUtil.transferFromUrlToFile(new URL(mod.getUrl()), tmpDest, progress);
 				System.out.println("'" + mod.getName() + "' downloaded.");
 
 				if(mod.getSha256() != null) {
@@ -149,17 +189,17 @@ public class LS5Installation extends ConfigureableInstallation{
 				if(CommandInstall.debugMode || !mod.isOptional()) throw e;
 				else System.err.println("Optional modification '" + mod.getName() + "' could not be installed. Installation will continue.");
 			}
+
+			progress.update(1D);
 		}
 
 		if(modifications.getOther() == null) return;
 
+		progress.nextStep("Downloading other modifications");
 		System.out.println("Downloading other modifications...");
 		File otherDest = new File(tmp, "ls5_client_mods.zip");
 
-		try(InputStream in = new URL(modifications.getOther()).openStream();
-				OutputStream out = new FileOutputStream(otherDest)) {
-			in.transferTo(out);
-		}
+		NetworkUtil.transferFromUrlToFile(new URL(modifications.getOther()), otherDest, progress);
 		System.out.println("Other mods have been downloaded.");
 
 		String otherMD5 = modifications.getOtherMD5();
@@ -172,7 +212,7 @@ public class LS5Installation extends ConfigureableInstallation{
 			System.out.println("Other mods are valid.");
 
 			System.out.println("Extracting other mods...");
-			ZIPUtil.extract(otherDest, modsDir);
+			ZIPUtil.extract(otherDest, modsDir, d -> {});
 			System.out.println("Successfully extracted other mods into the mods directory.");
 		}
 	}
@@ -235,23 +275,17 @@ public class LS5Installation extends ConfigureableInstallation{
 
 		System.out.println("Downloading " + optifine + "...");
 
-		try (InputStream in = new URL(downloadUrl).openStream();
-				OutputStream out = new FileOutputStream(dest)) {
-			in.transferTo(out);
-		}
+		NetworkUtil.transferFromUrlToFile(new URL(downloadUrl), dest, progress);
 
 		System.out.println(optifine + " has been downloaded into '" + dest.getAbsolutePath() + "'.");
 	}
 
 	private void extractResources(File resources, File baseDir) throws IOException {
-		ZIPUtil.extract(resources, baseDir);
+		ZIPUtil.extract(resources, baseDir, progress);
 	}
 
 	private void downloadResources(File resources) throws Exception {
-		try (InputStream in = new URL(resourcesURL).openStream();
-				OutputStream out = new FileOutputStream(resources)) {
-			in.transferTo(out);
-		}
+		NetworkUtil.transferFromUrlToFile(new URL(resourcesURL), resources, progress);
 	}
 
 	private void injectProfile(File dir) throws Exception{
@@ -299,14 +333,9 @@ public class LS5Installation extends ConfigureableInstallation{
 	}
 
 	private void installForge(File installerJar) throws Exception {
-		ProcessBuilder builder;
-		if(LauncherLogic.DEBUG) {
-			File dir = new File("C:\\Users\\Lukas\\Documents\\Electron\\lclplauncher\\bin\\launcherlogic");
-			builder = new ProcessBuilder(dir.getAbsolutePath() + "\\runtime\\bin\\java.exe", "-cp", "launcherlogic-forge_installer.jar;" + installerJar.getAbsolutePath(), "work.lclpnet.forgeinstaller.ForgeInstaller");
-			builder.directory(dir);
-		} else {
-			builder = new ProcessBuilder("runtime\\bin\\java.exe", "-cp", "launcherlogic-forge_installer.jar;" + installerJar.getAbsolutePath(), "work.lclpnet.forgeinstaller.ForgeInstaller");
-		}
+		String classpath = super.commandDelegate.llForgeInstallerJar.getAbsolutePath() + ";" + installerJar.getAbsolutePath();
+
+		ProcessBuilder builder = new ProcessBuilder(super.commandDelegate.javaExe.getAbsolutePath(), "-cp", classpath, "work.lclpnet.forgeinstaller.ForgeInstaller");
 		builder.inheritIO();
 		Process p = builder.start();
 		int exit = p.waitFor();
@@ -315,11 +344,9 @@ public class LS5Installation extends ConfigureableInstallation{
 
 	private void downloadForgeInstaller(String installerUrl, File dest) throws IOException{
 		System.out.println("Downloading forge installer...");
+
 		URL url = new URL(installerUrl);
-		try (InputStream in = url.openStream();
-				OutputStream out = new FileOutputStream(dest)) {
-			in.transferTo(out);
-		}
+		NetworkUtil.transferFromUrlToFile(url, dest, progress);
 	}
 
 }

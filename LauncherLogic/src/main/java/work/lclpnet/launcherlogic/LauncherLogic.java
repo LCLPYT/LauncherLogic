@@ -6,6 +6,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import work.lclpnet.launcherlogic.cmd.CommandEcho;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
+import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 
 @Command(
 		name = "java -jar LauncherLogic.jar", 
@@ -27,14 +28,23 @@ public class LauncherLogic implements Callable<Integer>{
 		System.out.println("Running LauncherLogic version " + VERSION + " using java " + System.getProperty("java.version"));
 
 		if(args.length <= 0) System.out.println("Supply '--help' as argument to get help.");
-		
+
 		instance = new LauncherLogic();
-		System.exit(new CommandLine(instance).execute(args));
+		int exitCode = new CommandLine(instance).execute(args);
+		if(ProgressCallbackClient.hasOpenSockets()) {
+			try {
+				Thread.sleep(1000L); //Delay to send potential pending tcp stuff (is this necessary?)
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			ProgressCallbackClient.closeAllSockets();
+		}
+		System.exit(exitCode);
 	}
 
 	@Override
 	public Integer call() throws Exception {
 		return 0;
 	}
-	
+
 }

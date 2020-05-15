@@ -1,7 +1,10 @@
 package work.lclpnet.launcherlogic.util;
 
 import java.io.File;
+import java.net.URISyntaxException;
 import java.util.Locale;
+
+import work.lclpnet.launcherlogic.LauncherLogic;
 
 public class FileUtils {
 
@@ -35,5 +38,16 @@ public class FileUtils {
             return new File(new File(new File(userHomeDir, "Library"),"Application Support"),"minecraft");
         return new File(userHomeDir, mcDir);
     }
+	
+	public static File getCurrentDir() {
+		try {
+			File file = new File(LauncherLogic.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+			if(file.isFile()) file = file.getParentFile();
+			return file;
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 
 }
