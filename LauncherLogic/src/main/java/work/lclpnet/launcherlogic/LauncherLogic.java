@@ -6,6 +6,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import work.lclpnet.launcherlogic.cmd.CommandEcho;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
+import work.lclpnet.launcherlogic.cmd.CommandPreparePlay;
 import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 
 @Command(
@@ -15,7 +16,8 @@ import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 		description = "Main command for launcher logic.",
 		subcommands = {
 				CommandEcho.class,
-				CommandInstall.class
+				CommandInstall.class,
+				CommandPreparePlay.class
 		}
 		)
 public class LauncherLogic implements Callable<Integer>{

@@ -3,6 +3,7 @@ package work.lclpnet.launcherlogic.ls5;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -34,6 +36,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
+import work.lclpnet.launcherlogic.install.Installation;
 import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
 import work.lclpnet.launcherlogic.install.SimpleConfiguration;
 import work.lclpnet.launcherlogic.util.ChecksumUtil;
@@ -48,18 +51,25 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 	private static final String optionsURL = "https://lclpnet.work/dl/installation-ls5-options", //TODO maybe create own page to manage...?
 			iconURL = "https://lclpnet.work/dl/ls5-profile-icon",
-			resourcesURL = "https://lclpnet.work/dl/ls5-gamedir-resources";
+			resourcesURL = "https://lclpnet.work/dl/ls5-gamedir-resources",
+			installationURL = "https://lclpnet.work/dl/ls5-installation";
 
 	public LS5Installation() {
-		super("ls5", optionsURL, 10, CommandInstall::getPcHost, CommandInstall::getPcPort);
+		super("ls5", optionsURL, 11, CommandInstall::getPcHost, CommandInstall::getPcPort);
 	}
+
+	protected Installation installation = null;
 
 	@Override
 	public void installInto(File baseDir) throws Exception {
 		if(super.commandDelegate == null) throw new IllegalAccessError("No command delegate was set. Set it with InstallationObject#setCommandDelegate(CommandInstall)");
-		
+
 		loadConfig(LS5Configuration.class);
 		SimpleConfiguration config = (SimpleConfiguration) super.config;
+
+		try (InputStream in = new URL(installationURL).openStream()) {
+			installation = Installation.fromInputStream(in);
+		}
 
 		setupProgress();
 
@@ -124,8 +134,23 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		FileUtils.recursiveDelete(tmp);
 		if(tmp.exists()) System.out.println("WARNING: The tmp folder could not be deleted entirely.");
 		progress.update(1D);
-		
+
+		progress.nextStep("Finishing installation");
+		System.out.println("Finishing installation...");
+		createInstallationFile(baseDir);
+		System.out.println("Finished.");
+		progress.update(1D);
+
 		progress.end();
+	}
+
+	private void createInstallationFile(File baseDir) throws FileNotFoundException, IOException {
+		File dest = new File(baseDir, ".installation");
+		String json = installation.toString();
+		String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+		try (OutputStream out = new FileOutputStream(dest)) {
+			out.write(base64.getBytes(StandardCharsets.UTF_8));
+		}
 	}
 
 	private void setupProgress() throws IOException {
@@ -317,7 +342,6 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		String formatted = format.format(date);
 
 		BufferedImage img = ImageIO.read(new URL(iconURL));
-
 
 		JsonObject profile = new JsonObject();
 		profile.addProperty("created", formatted);
