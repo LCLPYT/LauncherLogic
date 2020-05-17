@@ -15,3 +15,10 @@ org.gradle.java.home=<path to jdk home>
 ```
 Make sure, the path does not contain backslashes ('/') and do not put it in quotes, for gradle to understand.
 <hr>
+
+## Java jlink runtime
+The project uses the [Badass JLink Plugin](https://github.com/beryx/badass-jlink-plugin) gradle plugin to automatically create custom jlink runtimes.
+To build it, simply type:
+`gradlew jlink`
+Any output will be in the `/build` directory.
+The useable runtime is located under `/build/image`.
