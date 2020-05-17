@@ -71,7 +71,8 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			installation = Installation.fromInputStream(in);
 		}
 
-		setupProgress();
+		if(CommandInstall.doProgressCallback) setupProgress();
+		else super.progress = new Progress();
 
 		String forgeInstaller = (String) config.getVariable("forgeInstaller");
 
@@ -167,6 +168,8 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			}
 		}
 
+		this.progress.getProgressCallbackClient().setClientName("launcherLogicInstaller");
+		
 		this.progress.steps += modifications.getMods().size();
 		this.progress.initialPrint();
 	}
@@ -359,7 +362,15 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	private void installForge(File installerJar) throws Exception {
 		String classpath = super.commandDelegate.llForgeInstallerJar.getAbsolutePath() + ";" + installerJar.getAbsolutePath();
 
-		ProcessBuilder builder = new ProcessBuilder(super.commandDelegate.javaExe.getAbsolutePath(), "-cp", classpath, "work.lclpnet.forgeinstaller.ForgeInstaller");
+		ProcessBuilder builder = new ProcessBuilder(
+				super.commandDelegate.javaExe.getAbsolutePath(), 
+				"-Xms1G",
+				"-Xmx2G",
+				"-cp", 
+				classpath, 
+				"work.lclpnet.forgeinstaller.ForgeInstaller", 
+				CommandInstall.getPcHost() != null ? CommandInstall.getPcHost() : "none", 
+				String.valueOf(CommandInstall.getPcPort()));
 		builder.inheritIO();
 		Process p = builder.start();
 		int exit = p.waitFor();

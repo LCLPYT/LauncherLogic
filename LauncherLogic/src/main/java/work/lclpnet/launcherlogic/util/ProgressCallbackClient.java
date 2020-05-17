@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class ProgressCallbackClient {
 
@@ -38,6 +39,13 @@ public class ProgressCallbackClient {
 			ex.addSuppressed(e);
 			throw ex;
 		}
+	}
+	
+	public void setClientName(String name) {
+		JsonObject obj = new JsonObject();
+		obj.addProperty("setname", name);
+		String s = obj.toString() + "\n";
+		send(s.getBytes(StandardCharsets.UTF_8));
 	}
 	
 	public void send(String s) {

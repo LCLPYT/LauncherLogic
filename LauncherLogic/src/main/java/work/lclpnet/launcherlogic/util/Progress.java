@@ -67,6 +67,10 @@ public class Progress implements Consumer<Double>{
 		if(progressCallbackClient == null) return;
 		this.progressCallbackClient.stop();
 	}
+	
+	public ProgressCallbackClient getProgressCallbackClient() {
+		return progressCallbackClient;
+	}
 
 	@Override
 	public void accept(Double d) {
