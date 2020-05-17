@@ -19,6 +19,8 @@ Make sure, the path does not contain backslashes ('/') and do not put it in quot
 ## Java jlink runtime
 The project uses the [Badass JLink Plugin](https://github.com/beryx/badass-jlink-plugin) gradle plugin to automatically create custom jlink runtimes.<br>
 To build it, simply type:<br>
+<br>
 `gradlew jlink`<br>
+<br>
 Any output will be in the `/build` directory.
 The useable runtime is located under `/build/image`.
