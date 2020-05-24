@@ -28,4 +28,6 @@ public abstract class InstallationObject {
 	
 	public abstract void installInto(File baseDir) throws Exception;
 	
+	public abstract void checkForUpdate(File baseDir) throws Exception;
+	
 }

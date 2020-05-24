@@ -4,6 +4,7 @@ import java.util.concurrent.Callable;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
 import work.lclpnet.launcherlogic.cmd.CommandEcho;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
 import work.lclpnet.launcherlogic.cmd.CommandPreparePlay;
@@ -17,7 +18,8 @@ import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 		subcommands = {
 				CommandEcho.class,
 				CommandInstall.class,
-				CommandPreparePlay.class
+				CommandPreparePlay.class,
+				CommandCheckUpdate.class
 		}
 		)
 public class LauncherLogic implements Callable<Integer>{

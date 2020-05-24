@@ -1,41 +1,27 @@
 package work.lclpnet.launcherlogic.util;
 
-import java.util.Objects;
 import java.util.function.Consumer;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
 
-public class Progress implements Consumer<Double>{
+public class Progress extends CallbackHolder implements Consumer<Double>{
 
 	public int steps = 0, step = 0;
 	public String status = "Initializing";
 	public double stepProgress = 0D;
-	private transient String lastOutput = null;
-	private transient ProgressCallbackClient progressCallbackClient;
-	private transient Gson gson = new GsonBuilder()
-			.registerTypeAdapter(Double.class, new RoundedDoubleTypeAdapter(2))
-			.create();
-	
-	public Progress(ProgressCallbackClient client) {
-		this.progressCallbackClient = Objects.requireNonNull(client);
-		this.progressCallbackClient.setGson(gson);
-	}
 	
 	public Progress() {
-		this.progressCallbackClient = null;
+		super();
 	}
-
+	
+	public Progress(ProgressCallbackClient client) {
+		super(client);
+	}
+	
 	public void printProgress() {
 		if(!CommandInstall.doProgressCallback || progressCallbackClient == null) return;
 		
-		String progress = getProgressString();
-		if(lastOutput != null && lastOutput.equals(progress)) return;
-		
-		lastOutput = progress;
-		progressCallbackClient.send(progress);
+		print(getProgressString());
 	}
 
 	private String getProgressString() {
@@ -63,15 +49,6 @@ public class Progress implements Consumer<Double>{
 		printProgress();
 	}
 	
-	public void end() {
-		if(progressCallbackClient == null) return;
-		this.progressCallbackClient.stop();
-	}
-	
-	public ProgressCallbackClient getProgressCallbackClient() {
-		return progressCallbackClient;
-	}
-
 	@Override
 	public void accept(Double d) {
 		if(d != null) update(d);

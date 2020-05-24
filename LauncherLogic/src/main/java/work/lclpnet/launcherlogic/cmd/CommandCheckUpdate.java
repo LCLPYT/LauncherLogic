@@ -5,42 +5,35 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Help.Visibility;
 import work.lclpnet.launcherlogic.install.InstallationObject;
 import work.lclpnet.launcherlogic.install.InstallationObjects;
 import work.lclpnet.launcherlogic.util.CommonHelper;
-import work.lclpnet.launcherlogic.util.FileUtils;
 
 @Command(
-		name = "install",
+		name = "checkUpdate",
 		mixinStandardHelpOptions = true,
-		description = "Installs an object with the given ID."
+		description = "Checks for an update on the specified installation object."
 		)
-public class CommandInstall implements Callable<Integer>{
+public class CommandCheckUpdate implements Callable<Integer>{
 
-	public static boolean debugMode = false, doProgressCallback = false;
+	public static boolean debugMode = false, doProgressCallback = false; 
 	public static String pcHost = null;
 	public static int pcPort = 0;
 	
 	@Parameters(index = "0", paramLabel = "installId", description = "ID of the object to install.")
 	String installId;
 	
-	@Parameters(index = "1", paramLabel = "installDirectory", description = "The directory to install into.")
+	@Parameters(index = "1", paramLabel = "installDirectory", description = "The directory in which the installation is.")
 	File dir;
 	
 	@Option(names = {"--debug"}, description = "Enables debug mode", showDefaultValue = Visibility.ON_DEMAND)
 	boolean debug = false;
-
+	
 	@Option(names = {"--progress-callback"}, description = "Specifies progress callback host and port. <host>:<port>")
 	String progressCallback = null;
-	
-	@Option(names = {"--java-exe"}, description = "Path to the java executeable", showDefaultValue = Visibility.ALWAYS)
-	public File javaExe = new File(FileUtils.getCurrentDir(), "runtime/bin/java.exe");
-	
-	@Option(names = {"--launcher-forge-installer-jar"}, description = "Path to the launcher logic forge installer jar.", showDefaultValue = Visibility.ALWAYS)
-	public File llForgeInstallerJar = new File(FileUtils.getCurrentDir(), "launcherlogic-forge_installer.jar");
 	
 	@Override
 	public Integer call() throws Exception {
@@ -59,16 +52,15 @@ public class CommandInstall implements Callable<Integer>{
 		CommandInstall.debugMode = debug;
 		if(CommandInstall.debugMode) System.out.println("Enabling debug mode...");
 		
-		CommandInstall.doProgressCallback = progressCallback != null;
-		if(CommandInstall.doProgressCallback) System.out.println("Enabling progress callback.");
+		CommandCheckUpdate.doProgressCallback = progressCallback != null;
+		if(CommandCheckUpdate.doProgressCallback) System.out.println("Enabling progress callback.");
 		
 		System.out.println("Found installable object " + install + ".");
 		
-		System.out.println("Installing into '" + dir.getAbsolutePath() + "'...");
+		System.out.println("Checking for update in directory '" + dir.getAbsolutePath() + "'...");
 		try {
-			install.setCommandDelegate(this);
-			install.installInto(dir);
-			System.out.println("Installation complete.");
+			install.checkForUpdate(dir);
+			System.out.println("Update checking complete.");
 			return 0;
 		} catch (IOException e) {
 			if(debugMode) e.printStackTrace();
@@ -76,13 +68,5 @@ public class CommandInstall implements Callable<Integer>{
 			return 1;
 		}
 	}
-
-	public static String getPcHost() {
-		return pcHost;
-	}
 	
-	public static int getPcPort() {
-		return pcPort;
-	}
-
 }

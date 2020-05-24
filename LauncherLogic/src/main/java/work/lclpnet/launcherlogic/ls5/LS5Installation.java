@@ -1,6 +1,7 @@
 package work.lclpnet.launcherlogic.ls5;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -35,15 +36,19 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
+import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
 import work.lclpnet.launcherlogic.install.Installation;
 import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
 import work.lclpnet.launcherlogic.install.SimpleConfiguration;
+import work.lclpnet.launcherlogic.install.UpdateStatus;
 import work.lclpnet.launcherlogic.util.ChecksumUtil;
 import work.lclpnet.launcherlogic.util.FileUtils;
 import work.lclpnet.launcherlogic.util.ImageUtil;
 import work.lclpnet.launcherlogic.util.NetworkUtil;
+import work.lclpnet.launcherlogic.util.ObjectMessager;
 import work.lclpnet.launcherlogic.util.Progress;
+import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 import work.lclpnet.launcherlogic.util.URLUtil;
 import work.lclpnet.launcherlogic.util.ZIPUtil;
 
@@ -71,7 +76,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			installation = Installation.fromInputStream(in);
 		}
 
-		if(CommandInstall.doProgressCallback) setupProgress();
+		if(CommandInstall.doProgressCallback) setupProgress("launcherLogicInstaller");
 		else super.progress = new Progress();
 
 		String forgeInstaller = (String) config.getVariable("forgeInstaller");
@@ -154,7 +159,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		}
 	}
 
-	private void setupProgress() throws IOException {
+	private void setupProgress(String mode) throws IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		Modifications modifications = modConfig.getModifications();
 
@@ -167,9 +172,10 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 				System.out.println("WARNING: Could not connect to the progress callback server. Installation will continue without progress callback.");
 			}
 		}
-
-		this.progress.getProgressCallbackClient().setClientName("launcherLogicInstaller");
 		
+		if(this.progress.getProgressCallbackClient() != null) 
+			this.progress.getProgressCallbackClient().setClientName(mode);
+
 		this.progress.steps += modifications.getMods().size();
 		this.progress.initialPrint();
 	}
@@ -370,7 +376,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 				classpath, 
 				"work.lclpnet.forgeinstaller.ForgeInstaller", 
 				CommandInstall.getPcHost() != null ? CommandInstall.getPcHost() : "none", 
-				String.valueOf(CommandInstall.getPcPort()));
+						String.valueOf(CommandInstall.getPcPort()));
 		builder.inheritIO();
 		Process p = builder.start();
 		int exit = p.waitFor();
@@ -382,6 +388,59 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 		URL url = new URL(installerUrl);
 		NetworkUtil.transferFromUrlToFile(url, dest, progress);
+	}
+
+	@Override
+	public void checkForUpdate(File baseDir) throws Exception {
+		try (InputStream in = new URL(installationURL).openStream()) {
+			installation = Installation.fromInputStream(in);
+		}
+
+		ObjectMessager messager;
+		try {
+			messager = CommandCheckUpdate.doProgressCallback 
+					? new ObjectMessager(new ProgressCallbackClient(CommandCheckUpdate.pcHost, CommandCheckUpdate.pcPort)) 
+							: new ObjectMessager();
+		} catch (IOException e) {
+			if(CommandInstall.debugMode) throw e;
+			else {
+				messager = new ObjectMessager();
+				System.out.println("WARNING: Could not connect to the progress callback server. Update checking will continue without progress callback.");
+			}
+		}
+		
+		if(messager.getProgressCallbackClient() != null) {
+			System.out.println("Successfully connected to progress callback server.");
+			messager.getProgressCallbackClient().setClientName("launcherLogicUpdater");
+		}
+
+		File dest = new File(baseDir, ".installation");
+		if(!dest.exists()) {
+			printAndSend(messager, UpdateStatus.INSTALLATION_NOT_EXIST);
+			return;
+		}
+		
+		String base64;
+		try (InputStream in = new FileInputStream(dest);
+				ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			in.transferTo(out);
+			base64 = new String(out.toByteArray(), StandardCharsets.UTF_8);
+		}
+		
+		String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
+		Installation localInstall = new Gson().fromJson(decoded, Installation.class);
+		
+		if(localInstall.getVersionNumber() < installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_OUTDATED);
+		else if(localInstall.getVersionNumber() == installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_UP_TO_DATE);
+		else printAndSend(messager, UpdateStatus.INSTALLATION_FUTURE);
+		
+		System.out.println("Finished.");
+		messager.end();
+	}
+	
+	private static void printAndSend(ObjectMessager messager, UpdateStatus o) {
+		messager.send(o);
+		System.out.println("[Result]" + o.status);
 	}
 
 }
