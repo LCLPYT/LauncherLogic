@@ -54,10 +54,10 @@ import work.lclpnet.launcherlogic.util.ZIPUtil;
 
 public class LS5Installation extends ProgressableConfigureableInstallation {
 
-	private static final String optionsURL = "https://lclpnet.work/dl/installation-ls5-options", //TODO maybe create own page to manage...?
-			iconURL = "https://lclpnet.work/dl/ls5-profile-icon",
-			resourcesURL = "https://lclpnet.work/dl/ls5-gamedir-resources",
-			installationURL = "https://lclpnet.work/dl/ls5-installation";
+	private static final String optionsURL = "https://lclpnet.work/lclplauncher/installations/ls5/options",
+			iconURL = "https://lclpnet.work/lclplauncher/installations/ls5/profile-icon",
+			resourcesURL = "https://lclpnet.work/lclplauncher/installations/ls5/gamedir-resources",
+			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info";
 
 	public LS5Installation() {
 		super("ls5", optionsURL, 11, CommandInstall::getPcHost, CommandInstall::getPcPort);
