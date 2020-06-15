@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.CookieManager;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -60,7 +61,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info";
 
 	public LS5Installation() {
-		super("ls5", optionsURL, 11, CommandInstall::getPcHost, CommandInstall::getPcPort);
+		super("ls5", optionsURL, 13, CommandInstall::getPcHost, CommandInstall::getPcPort);
 	}
 
 	protected Installation installation = null;
@@ -135,6 +136,16 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		installMods(baseDir, tmp);
 		//progress.update(1D);
 
+		progress.nextStep("Downloading FFMPEG...");
+		System.out.println("Downloading FFMPEG...");
+		downloadFFMPEG(baseDir, tmp);
+		progress.update(1D);
+
+		progress.nextStep("Extracting FFMPEG...");
+		System.out.println("Extracting FFMPEG...");
+		extractFFMPEG(baseDir, tmp);
+		progress.update(1D);
+
 		progress.nextStep("Cleaning up");
 		System.out.println("Deleting temporary files...");
 		FileUtils.recursiveDelete(tmp);
@@ -148,6 +159,31 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		progress.update(1D);
 
 		progress.end();
+	}
+
+	private void extractFFMPEG(File baseDir, File tmp) throws IOException {
+		LS5Configuration modConfig = (LS5Configuration) super.config;
+		File from = new File(tmp, "ffmpeg.zip");
+		String checksum = ChecksumUtil.getSha256(from);
+		String sha256 = (String) modConfig.getVariable("ffmpegSha256");
+		if(!sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
+		ZIPUtil.extract(from, new File(baseDir, "ffmpeg"), progress);
+		
+		File locator = new File(new File(baseDir, "ffmpeg"), ".locator");
+		String[] parts = ((String) modConfig.getVariable("ffmpeg")).split("/");
+		String content = parts[parts.length - 1].split("\\.(?=[^\\.]+$)")[0];
+		String base64 = Base64.getEncoder().encodeToString(content.getBytes(StandardCharsets.UTF_8));
+		try (OutputStream out = new FileOutputStream(locator)) {
+			out.write(base64.getBytes(StandardCharsets.UTF_8));
+		}
+	}
+
+	private void downloadFFMPEG(File baseDir, File tmp) throws MalformedURLException, IOException {
+		LS5Configuration modConfig = (LS5Configuration) super.config;
+		String url = (String) modConfig.getVariable("ffmpeg");
+
+		File dest = new File(tmp, "ffmpeg.zip");
+		NetworkUtil.transferFromUrlToFile(new URL(url), dest, progress);
 	}
 
 	private void createInstallationFile(File baseDir) throws FileNotFoundException, IOException {
@@ -172,7 +208,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 				System.out.println("WARNING: Could not connect to the progress callback server. Installation will continue without progress callback.");
 			}
 		}
-		
+
 		if(this.progress.getProgressCallbackClient() != null) 
 			this.progress.getProgressCallbackClient().setClientName(mode);
 
@@ -408,7 +444,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 				System.out.println("WARNING: Could not connect to the progress callback server. Update checking will continue without progress callback.");
 			}
 		}
-		
+
 		if(messager.getProgressCallbackClient() != null) {
 			System.out.println("Successfully connected to progress callback server.");
 			messager.getProgressCallbackClient().setClientName("launcherLogicUpdater");
@@ -419,25 +455,25 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			printAndSend(messager, UpdateStatus.INSTALLATION_NOT_EXIST);
 			return;
 		}
-		
+
 		String base64;
 		try (InputStream in = new FileInputStream(dest);
 				ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			in.transferTo(out);
 			base64 = new String(out.toByteArray(), StandardCharsets.UTF_8);
 		}
-		
+
 		String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
 		Installation localInstall = new Gson().fromJson(decoded, Installation.class);
-		
+
 		if(localInstall.getVersionNumber() < installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_OUTDATED);
 		else if(localInstall.getVersionNumber() == installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_UP_TO_DATE);
 		else printAndSend(messager, UpdateStatus.INSTALLATION_FUTURE);
-		
+
 		System.out.println("Finished.");
 		messager.end();
 	}
-	
+
 	private static void printAndSend(ObjectMessager messager, UpdateStatus o) {
 		messager.send(o);
 		System.out.println("[Result]" + o.status);
