@@ -58,10 +58,11 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	private static final String optionsURL = "https://lclpnet.work/lclplauncher/installations/ls5/options",
 			iconURL = "https://lclpnet.work/lclplauncher/installations/ls5/profile-icon",
 			resourcesURL = "https://lclpnet.work/lclplauncher/installations/ls5/gamedir-resources",
-			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info";
+			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info",
+			YTDL_URL_WIN = "https://yt-dl.org/latest/youtube-dl.exe";
 
 	public LS5Installation() {
-		super("ls5", optionsURL, 13, CommandInstall::getPcHost, CommandInstall::getPcPort);
+		super("ls5", optionsURL, 14, CommandInstall::getPcHost, CommandInstall::getPcPort);
 	}
 
 	protected Installation installation = null;
@@ -145,6 +146,11 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		System.out.println("Extracting FFMPEG...");
 		extractFFMPEG(baseDir, tmp);
 		progress.update(1D);
+		
+		progress.nextStep("Downloading youtube-dl...");
+		System.out.println("Donwloading youtube-dl...");
+		downloadYtdl(baseDir);
+		progress.update(1D);
 
 		progress.nextStep("Cleaning up");
 		System.out.println("Deleting temporary files...");
@@ -161,15 +167,20 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		progress.end();
 	}
 
+	private void downloadYtdl(File baseDir) throws MalformedURLException, IOException {
+		File dest = new File(baseDir, "bin" + File.separatorChar + "youtube-dl.exe");
+		NetworkUtil.transferFromUrlToFile(new URL(YTDL_URL_WIN), dest, progress);
+	}
+
 	private void extractFFMPEG(File baseDir, File tmp) throws IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		File from = new File(tmp, "ffmpeg.zip");
 		String checksum = ChecksumUtil.getSha256(from);
 		String sha256 = (String) modConfig.getVariable("ffmpegSha256");
 		if(!sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
-		ZIPUtil.extract(from, new File(baseDir, "ffmpeg"), progress);
+		ZIPUtil.extract(from, new File(baseDir, "bin" + File.separatorChar + "ffmpeg"), progress);
 		
-		File locator = new File(new File(baseDir, "ffmpeg"), ".locator");
+		File locator = new File(new File(baseDir, "bin" + File.separatorChar + "ffmpeg"), ".locator");
 		String[] parts = ((String) modConfig.getVariable("ffmpeg")).split("/");
 		String content = parts[parts.length - 1].split("\\.(?=[^\\.]+$)")[0];
 		String base64 = Base64.getEncoder().encodeToString(content.getBytes(StandardCharsets.UTF_8));
