@@ -9,7 +9,6 @@
 plugins {
     id "java-library"
     id "eclipse"
-    id "org.beryx.jlink" version "2.19.0"
 }
 
 repositories {
@@ -33,7 +32,7 @@ eclipse.classpath.file {
     }
 }
 
-boolean isModule(entry) {
+static boolean isModule(entry) {
     // filter java 9 modules
     entry.kind == 'lib'  // Only libraries can be modules
 }
@@ -56,5 +55,3 @@ jar {
         attributes 'Main-Class': 'work.lclpnet.launcherlogic.LauncherLogic'
     }
 }
-
-mainClassName = 'work.lclpnet.launcherlogic/work.lclpnet.launcherlogic.LauncherLogic'

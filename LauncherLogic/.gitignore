@@ -7,5 +7,10 @@ build
 buildRT
 
 .classpath
+.project
+
+.iws
+workspace.xml
+tasks.xml
 
 bin
