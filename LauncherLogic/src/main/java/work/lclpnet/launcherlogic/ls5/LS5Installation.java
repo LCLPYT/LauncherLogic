@@ -25,6 +25,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -43,23 +44,14 @@ import work.lclpnet.launcherlogic.install.Installation;
 import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
 import work.lclpnet.launcherlogic.install.SimpleConfiguration;
 import work.lclpnet.launcherlogic.install.UpdateStatus;
-import work.lclpnet.launcherlogic.util.ChecksumUtil;
-import work.lclpnet.launcherlogic.util.FileUtils;
-import work.lclpnet.launcherlogic.util.ImageUtil;
-import work.lclpnet.launcherlogic.util.NetworkUtil;
-import work.lclpnet.launcherlogic.util.ObjectMessager;
-import work.lclpnet.launcherlogic.util.Progress;
-import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
-import work.lclpnet.launcherlogic.util.URLUtil;
-import work.lclpnet.launcherlogic.util.ZIPUtil;
+import work.lclpnet.launcherlogic.util.*;
 
 public class LS5Installation extends ProgressableConfigureableInstallation {
 
 	private static final String optionsURL = "https://lclpnet.work/lclplauncher/installations/ls5/options",
 			iconURL = "https://lclpnet.work/lclplauncher/installations/ls5/profile-icon",
 			resourcesURL = "https://lclpnet.work/lclplauncher/installations/ls5/gamedir-resources",
-			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info",
-			YTDL_URL_WIN = "https://yt-dl.org/latest/youtube-dl.exe";
+			installationURL = "https://lclpnet.work/lclplauncher/installations/ls5/info";
 
 	public LS5Installation() {
 		super("ls5", optionsURL, 14, CommandInstall::getPcHost, CommandInstall::getPcPort);
@@ -164,36 +156,38 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		System.out.println("Finished.");
 		progress.update(1D);
 
+		if(System.getProperty("os.name").equals("Linux")) System.out.println("Please make sure you are running Minecraft with java 8.");
+
 		progress.end();
 	}
 
 	private void downloadYtdl(File baseDir) throws MalformedURLException, IOException {
-		File dest = new File(baseDir, "bin" + File.separatorChar + "youtube-dl.exe");
-		NetworkUtil.transferFromUrlToFile(new URL(YTDL_URL_WIN), dest, progress);
+		File dest = new File(baseDir, "bin" + File.separatorChar + OSHooks.getYTDLExeName());
+		NetworkUtil.transferFromUrlToFile(new URL(OSHooks.getYTDLDownloadLink()), dest, progress);
 	}
 
 	private void extractFFMPEG(File baseDir, File tmp) throws IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
-		File from = new File(tmp, "ffmpeg.zip");
+		File from = new File(tmp, OSHooks.getFFMPEGName());
 		String checksum = ChecksumUtil.getSha256(from);
-		String sha256 = (String) modConfig.getVariable("ffmpegSha256");
+		String sha256 = OSHooks.getFFMPEGSha256(modConfig);
 		if(!sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
-		ZIPUtil.extract(from, new File(baseDir, "bin" + File.separatorChar + "ffmpeg"), progress);
-		
-		File locator = new File(new File(baseDir, "bin" + File.separatorChar + "ffmpeg"), ".locator");
-		String[] parts = ((String) modConfig.getVariable("ffmpeg")).split("/");
-		String content = parts[parts.length - 1].split("\\.(?=[^\\.]+$)")[0];
-		String base64 = Base64.getEncoder().encodeToString(content.getBytes(StandardCharsets.UTF_8));
-		try (OutputStream out = new FileOutputStream(locator)) {
-			out.write(base64.getBytes(StandardCharsets.UTF_8));
-		}
+		File ffmpegDir = new File(baseDir, "bin" + File.separatorChar + "ffmpeg");
+		File target = new File(ffmpegDir, "ffmpeg");
+		if(target.exists() && !FileUtils.recursiveDelete(target)) throw new IllegalStateException("Could not delete " + target.getAbsolutePath());
+		OSHooks.extractFFMPEG(from, ffmpegDir, progress);
+
+		File[] files = ffmpegDir.listFiles();
+		if(files == null || files.length != 1) throw new IllegalStateException("More than one file in " + ffmpegDir.getAbsolutePath());
+		File dir = files[0];
+		if(!dir.renameTo(target)) throw new IllegalStateException(dir.getAbsolutePath() + " could not be renamed to " + target.getAbsolutePath());
 	}
 
 	private void downloadFFMPEG(File baseDir, File tmp) throws MalformedURLException, IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
-		String url = (String) modConfig.getVariable("ffmpeg");
+		String url = OSHooks.getFFMPEGUrl(modConfig);
 
-		File dest = new File(tmp, "ffmpeg.zip");
+		File dest = new File(tmp, OSHooks.getFFMPEGName());
 		NetworkUtil.transferFromUrlToFile(new URL(url), dest, progress);
 	}
 
@@ -408,12 +402,13 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		profile.addProperty("lastVersionId", (String) ((SimpleConfiguration) config).getVariable("lastVersionId"));
 		profile.addProperty("name", "LCLPServer 5.0");
 		profile.addProperty("type", "custom");
+		if(super.commandDelegate.profileJavaExecPath != null) profile.addProperty("javaDir", super.commandDelegate.profileJavaExecPath);
 
 		return profile;
 	}
 
 	private void installForge(File installerJar) throws Exception {
-		String classpath = super.commandDelegate.llForgeInstallerJar.getAbsolutePath() + ";" + installerJar.getAbsolutePath();
+		String classpath = super.commandDelegate.llForgeInstallerJar.getAbsolutePath() + ":" + installerJar.getAbsolutePath();
 
 		ProcessBuilder builder = new ProcessBuilder(
 				super.commandDelegate.javaExe.getAbsolutePath(), 
@@ -427,6 +422,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		builder.inheritIO();
 		Process p = builder.start();
 		int exit = p.waitFor();
+		if(exit != 0) throw new IllegalStateException("Subprocess exited with exit code " + exit);
 		System.out.println("Process finished with exit code " + exit + ".");
 	}
 

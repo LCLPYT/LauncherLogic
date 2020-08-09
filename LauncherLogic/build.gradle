@@ -16,11 +16,15 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: 'java'
+
 dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation 'info.picocli:picocli:4.2.0'
-    implementation 'com.google.code.gson:gson:2.8.6'
-    implementation 'org.jsoup:jsoup:1.13.1'
+    compile 'info.picocli:picocli:4.2.0'
+    compile 'com.google.code.gson:gson:2.8.6'
+    compile 'org.jsoup:jsoup:1.13.1'
+    compile 'org.apache.commons:commons-compress:1.20'
+    compile 'org.tukaani:xz:1.8'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
@@ -53,5 +57,9 @@ compileJava {
 jar {
     manifest {
         attributes 'Main-Class': 'work.lclpnet.launcherlogic.LauncherLogic'
+    }
+
+    from {
+        configurations.compile.collect {it.isDirectory() ? it : zipTree(it) }
     }
 }

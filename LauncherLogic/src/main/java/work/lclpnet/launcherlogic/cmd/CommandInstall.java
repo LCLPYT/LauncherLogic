@@ -41,6 +41,9 @@ public class CommandInstall implements Callable<Integer>{
 	
 	@Option(names = {"--launcher-forge-installer-jar"}, description = "Path to the launcher logic forge installer jar.", showDefaultValue = Visibility.ALWAYS)
 	public File llForgeInstallerJar = new File(FileUtils.getCurrentDir(), "launcherlogic-forge_installer.jar");
+
+	@Option(names = {"--profile-java"}, description = "The path to the java executable to print to the profile.")
+	public String profileJavaExecPath = null;
 	
 	@Override
 	public Integer call() throws Exception {

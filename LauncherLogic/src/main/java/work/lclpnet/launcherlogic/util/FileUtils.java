@@ -8,8 +8,8 @@ import work.lclpnet.launcherlogic.LauncherLogic;
 
 public class FileUtils {
 
-	public static void recursiveDelete(File file) {
-		if (file == null || !file.exists()) return;
+	public static boolean recursiveDelete(File file) {
+		if (file == null || !file.exists()) return true;
 
 		if (file.isDirectory()) { 
 			File[] files = file.listFiles();
@@ -21,11 +21,15 @@ public class FileUtils {
 			}
 		}
 
-		delete(file);
+		return delete(file);
 	}
 
-	public static void delete(File file) {
-		if (file.exists() && !file.delete()) System.err.println("Unable to delete file '" + file.getAbsolutePath() + "'.");
+	public static boolean delete(File file) {
+		if (file.exists() && !file.delete()) {
+			System.err.println("Unable to delete file '" + file.getAbsolutePath() + "'.");
+			return false;
+		}
+		return true;
 	}
 	
 	public static File getMCDir() {
