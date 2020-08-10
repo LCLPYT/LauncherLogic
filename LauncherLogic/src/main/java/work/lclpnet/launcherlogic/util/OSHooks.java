@@ -65,6 +65,10 @@ public class OSHooks {
             }
         }
 
+        public String getForgeInstallerClasspath(File llForgeInstallerJar, File installerJar) {
+            return llForgeInstallerJar.getAbsolutePath() + ":" + installerJar.getAbsolutePath();
+        }
+
     }
 
     private static class LinuxHandler extends OSHandler {
@@ -101,15 +105,19 @@ public class OSHooks {
         public void extractFFMPEG(File from, File ffmpegDir, Progress progress) throws IOException {
             ZIPUtil.extract(from, ffmpegDir, progress);
         }
+
+        @Override
+        public String getForgeInstallerClasspath(File llForgeInstallerJar, File installerJar) {
+            return llForgeInstallerJar.getAbsolutePath() + ";" + installerJar.getAbsolutePath();
+        }
     }
 
     private static final OSHandler handler;
 
     static {
-        switch (System.getProperty("os.name")) {
-            case "Linux" -> handler = new LinuxHandler();
-            default -> handler = new OSHandler();
-        }
+        if(System.getProperty("os.name").equalsIgnoreCase("Linux")) handler = new LinuxHandler();
+        else if(System.getProperty("os.name").contains("Windows")) handler = new WinHandler();
+        else handler = new OSHandler();
     }
 
     public static String getYTDLDownloadLink() {
@@ -134,6 +142,10 @@ public class OSHooks {
 
     public static void extractFFMPEG(File from, File ffmpegDir, Progress progress) throws IOException {
         handler.extractFFMPEG(from, ffmpegDir, progress);
+    }
+
+    public static String getForgeInstallerClasspath(File llForgeInstallerJar, File installerJar) {
+        return handler.getForgeInstallerClasspath(llForgeInstallerJar, installerJar);
     }
 
 }

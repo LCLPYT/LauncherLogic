@@ -174,7 +174,8 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		if(!sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
 		File ffmpegDir = new File(baseDir, "bin" + File.separatorChar + "ffmpeg");
 		File target = new File(ffmpegDir, "ffmpeg");
-		if(target.exists() && !FileUtils.recursiveDelete(target)) throw new IllegalStateException("Could not delete " + target.getAbsolutePath());
+
+		if(ffmpegDir.exists() && !FileUtils.recursiveDelete(ffmpegDir)) throw new IllegalStateException("Could not delete " + ffmpegDir.getAbsolutePath());
 		OSHooks.extractFFMPEG(from, ffmpegDir, progress);
 
 		File[] files = ffmpegDir.listFiles();
@@ -408,7 +409,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	}
 
 	private void installForge(File installerJar) throws Exception {
-		String classpath = super.commandDelegate.llForgeInstallerJar.getAbsolutePath() + ":" + installerJar.getAbsolutePath();
+		String classpath = OSHooks.getForgeInstallerClasspath(super.commandDelegate.llForgeInstallerJar, installerJar);
 
 		ProcessBuilder builder = new ProcessBuilder(
 				super.commandDelegate.javaExe.getAbsolutePath(), 

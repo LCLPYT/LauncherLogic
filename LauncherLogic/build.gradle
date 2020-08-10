@@ -41,19 +41,6 @@ static boolean isModule(entry) {
     entry.kind == 'lib'  // Only libraries can be modules
 }
 
-compileJava {
-    inputs.property("moduleName", "work.lclpnet.launcherlogic")
-    doFirst {
-        options.compilerArgs = [
-            '--module-path', classpath.asPath,
-            '--add-modules', 'info.picocli',
-            '--add-modules', 'com.google.gson',
-            '--add-modules', 'org.jsoup'
-        ]
-        classpath = files()
-    }
-}
-
 jar {
     manifest {
         attributes 'Main-Class': 'work.lclpnet.launcherlogic.LauncherLogic'
