@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
+import work.lclpnet.launcherlogic.ls5.LS5Installation;
 import work.lclpnet.launcherlogic.util.FileUtils;
 
 @Command(
@@ -35,6 +36,8 @@ public class CommandPreparePlay implements Callable<Integer>{
 	@Override
 	public Integer call() throws Exception {
 		System.out.println("Preparing profile with id '" + profileId + "'...");
+		
+		LS5Installation.backupProfilesFile();
 		
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");

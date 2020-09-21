@@ -75,7 +75,7 @@ public class CommandInstall implements Callable<Integer>{
 			return 0;
 		} catch (IOException e) {
 			if(debugMode) e.printStackTrace();
-			System.err.println("Installation failed.");
+			System.err.println("Installation failed: " + e.getMessage());
 			return 1;
 		}
 	}

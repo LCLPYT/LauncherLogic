@@ -25,7 +25,6 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -44,7 +43,16 @@ import work.lclpnet.launcherlogic.install.Installation;
 import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
 import work.lclpnet.launcherlogic.install.SimpleConfiguration;
 import work.lclpnet.launcherlogic.install.UpdateStatus;
-import work.lclpnet.launcherlogic.util.*;
+import work.lclpnet.launcherlogic.util.ChecksumUtil;
+import work.lclpnet.launcherlogic.util.FileUtils;
+import work.lclpnet.launcherlogic.util.ImageUtil;
+import work.lclpnet.launcherlogic.util.NetworkUtil;
+import work.lclpnet.launcherlogic.util.OSHooks;
+import work.lclpnet.launcherlogic.util.ObjectMessager;
+import work.lclpnet.launcherlogic.util.Progress;
+import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
+import work.lclpnet.launcherlogic.util.URLUtil;
+import work.lclpnet.launcherlogic.util.ZIPUtil;
 
 public class LS5Installation extends ProgressableConfigureableInstallation {
 
@@ -82,6 +90,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		progress.nextStep("Preparing installation");
 		if(tmp.exists()) FileUtils.recursiveDelete(tmp);
 		tmp.mkdirs();
+		pushProfilesFile(tmp);
 		progress.update(1D);
 
 		progress.nextStep("Downloading Forge installer");
@@ -91,6 +100,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		progress.nextStep("Installing Forge");
 		System.out.println("Installing forge...");
 		installForge(dest);
+		popProfilesFile(tmp);
 		progress.update(1D);
 
 		progress.nextStep("Injecting game profile");
@@ -131,14 +141,23 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 		progress.nextStep("Downloading FFMPEG...");
 		System.out.println("Downloading FFMPEG...");
-		downloadFFMPEG(baseDir, tmp);
+		boolean ffmpegFailed = false;
+		try {
+			downloadFFMPEG(baseDir, tmp);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println("Skipping FFMPEG steps, because an error occurred.");
+			ffmpegFailed = true;
+		}
 		progress.update(1D);
 
 		progress.nextStep("Extracting FFMPEG...");
-		System.out.println("Extracting FFMPEG...");
-		extractFFMPEG(baseDir, tmp);
+		if(!ffmpegFailed) {
+			System.out.println("Extracting FFMPEG...");
+			extractFFMPEG(baseDir, tmp);
+		}
 		progress.update(1D);
-		
+
 		progress.nextStep("Downloading youtube-dl...");
 		System.out.println("Donwloading youtube-dl...");
 		downloadYtdl(baseDir);
@@ -160,6 +179,32 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 		progress.end();
 	}
+	
+	private void popProfilesFile(File tmpDir) throws IOException {
+		File baseDir = FileUtils.getMCDir();
+		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
+		
+		File target = new File(tmpDir, "launcher_profiles.json.tmp");
+		if(!target.exists()) return;
+		
+		try(FileInputStream in = new FileInputStream(target);
+				FileOutputStream out = new FileOutputStream(launcherProfilesFile)) {
+			in.transferTo(out);
+		}
+	}
+
+	private void pushProfilesFile(File tmpDir) throws IOException{
+		File baseDir = FileUtils.getMCDir();
+		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
+		if(!launcherProfilesFile.exists()) return;
+		
+		File target = new File(tmpDir, "launcher_profiles.json.tmp");
+		
+		try(FileInputStream in = new FileInputStream(launcherProfilesFile);
+				FileOutputStream out = new FileOutputStream(target)) {
+			in.transferTo(out);
+		}
+	}
 
 	private void downloadYtdl(File baseDir) throws MalformedURLException, IOException {
 		File dest = new File(baseDir, "bin" + File.separatorChar + OSHooks.getYTDLExeName());
@@ -171,7 +216,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		File from = new File(tmp, OSHooks.getFFMPEGName());
 		String checksum = ChecksumUtil.getSha256(from);
 		String sha256 = OSHooks.getFFMPEGSha256(modConfig);
-		if(!sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
+		if(sha256 != null && !sha256.equals(checksum)) throw new SecurityException("Checksum mismatching for ffmpeg.");
 		File ffmpegDir = new File(baseDir, "bin" + File.separatorChar + "ffmpeg");
 		File target = new File(ffmpegDir, "ffmpeg");
 
@@ -187,6 +232,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	private void downloadFFMPEG(File baseDir, File tmp) throws MalformedURLException, IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		String url = OSHooks.getFFMPEGUrl(modConfig);
+		System.out.println(url);
 
 		File dest = new File(tmp, OSHooks.getFFMPEGName());
 		NetworkUtil.transferFromUrlToFile(new URL(url), dest, progress);
@@ -365,6 +411,8 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	}
 
 	private void injectProfile(File dir) throws Exception{
+		backupProfilesFile();
+		
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
 
@@ -406,6 +454,19 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		if(super.commandDelegate.profileJavaExecPath != null) profile.addProperty("javaDir", super.commandDelegate.profileJavaExecPath);
 
 		return profile;
+	}
+	
+	public static void backupProfilesFile() throws IOException{
+		File baseDir = FileUtils.getMCDir();
+		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
+		if(!launcherProfilesFile.exists()) return;
+		
+		File target = new File(baseDir, "launcher_profiles.json.backup");
+		
+		try(FileInputStream in = new FileInputStream(launcherProfilesFile);
+				FileOutputStream out = new FileOutputStream(target)) {
+			in.transferTo(out);
+		}
 	}
 
 	private void installForge(File installerJar) throws Exception {

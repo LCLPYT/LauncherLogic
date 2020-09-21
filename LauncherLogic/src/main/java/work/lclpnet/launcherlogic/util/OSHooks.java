@@ -1,21 +1,25 @@
 package work.lclpnet.launcherlogic.util;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
-import work.lclpnet.launcherlogic.ls5.LS5Configuration;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import work.lclpnet.launcherlogic.ls5.LS5Configuration;
 
 public class OSHooks {
 
     private static class OSHandler {
 
-        private String msg = "Unsupported operating system: " + System.getProperty("os.name");
+        //private String msg = "Unsupported operating system: " + System.getProperty("os.name");
 
         public String getYTDLDownloadLink() {
             return "https://yt-dl.org/downloads/latest/youtube-dl";

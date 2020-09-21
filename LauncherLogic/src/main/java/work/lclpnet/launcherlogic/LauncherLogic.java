@@ -8,7 +8,6 @@ import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
 import work.lclpnet.launcherlogic.cmd.CommandEcho;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
 import work.lclpnet.launcherlogic.cmd.CommandPreparePlay;
-import work.lclpnet.launcherlogic.util.OSHooks;
 import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 
 @Command(
