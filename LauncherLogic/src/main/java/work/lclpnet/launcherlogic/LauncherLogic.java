@@ -33,13 +33,12 @@ public class LauncherLogic implements Callable<Integer>{
 	public static final String VERSION = "1.0";
 	public static final boolean DEBUG = true;
 	private static LauncherLogic instance = null;
-	public static File tempDir = null;
 	
 	public static void main(String[] args) {
 		//args = new String[] {"install", "ls5", "/home/lukas/lclpserver", "--debug", "--java-exe", "/home/lukas/Documents/projects/lclpserver5/LCLPLauncher/bin/launcherlogic/runtime/bin/java", "--launcher-forge-installer-jar", "/home/lukas/Documents/projects/lclpserver5/LCLPLauncher/bin/launcherlogic/launcherlogic-forge_installer.jar", "--profile-java", "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"};
 		//args = new String[] {"install", "ls5", "C:\\Users\\Lukas\\lclpserver5", "--debug", "--java-exe", "C:\\Users\\Lukas\\Documents\\Electron\\lclplauncher\\bin\\launcherlogic\\runtime\\bin\\java.exe", "--launcher-forge-installer-jar", "C:\\Users\\Lukas\\Documents\\Electron\\lclplauncher\\bin\\launcherlogic\\launcherlogic-forge_installer.jar"};
 		
-		tempDir = new File(System.getProperty("java.io.tmpdir"), "launcherlogic");
+		File tempDir = new File(System.getProperty("java.io.tmpdir"), "launcherlogic");
 		tempDir.mkdirs();
 		File logFile = new File(tempDir, String.format("launcherlogic_%s_stdout.txt", System.currentTimeMillis() / 1000L));
 		File errFile = new File(tempDir, String.format("launcherlogic_%s_stderr.txt", System.currentTimeMillis() / 1000L));
