@@ -81,7 +81,7 @@ public class LauncherLogic implements Callable<Integer>{
 			System.setOut(origOut);
 			System.setErr(origErr);
 		} catch (IOException e) {
-			e.printStackTrace();
+			e.printStackTrace(origErr);
 		}
 		
 		System.exit(exitCode);
