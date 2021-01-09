@@ -37,6 +37,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
+import work.lclpnet.launcherlogic.LauncherLogic;
 import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
 import work.lclpnet.launcherlogic.install.Installation;
@@ -261,8 +262,11 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			}
 		}
 
-		if(this.progress.getProgressCallbackClient() != null) 
+		if(this.progress.getProgressCallbackClient() != null) {
 			this.progress.getProgressCallbackClient().setClientName(mode);
+			if(LauncherLogic.tempDir != null) 
+				this.progress.getProgressCallbackClient().send("Writing logs to: " + LauncherLogic.tempDir.getAbsolutePath());
+		}
 
 		this.progress.steps += modifications.getMods().size();
 		this.progress.initialPrint();
