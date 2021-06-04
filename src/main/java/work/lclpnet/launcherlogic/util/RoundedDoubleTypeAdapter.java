@@ -10,16 +10,16 @@ import java.util.Locale;
 
 public class RoundedDoubleTypeAdapter implements JsonSerializer<Double> {
 
-	protected int decimalPlaces;
-	
-	public RoundedDoubleTypeAdapter(int decimalPlaces) {
-		this.decimalPlaces = decimalPlaces;
-	}
-	
-	@Override
-	public JsonElement serialize(Double src, Type typeOfSrc, JsonSerializationContext context) {
-		Double d = Double.valueOf(String.format(Locale.ENGLISH, String.format("%%.%sf", decimalPlaces), src));
-		return new JsonPrimitive(d);
-	}
+    protected int decimalPlaces;
+
+    public RoundedDoubleTypeAdapter(int decimalPlaces) {
+        this.decimalPlaces = decimalPlaces;
+    }
+
+    @Override
+    public JsonElement serialize(Double src, Type typeOfSrc, JsonSerializationContext context) {
+        Double d = Double.valueOf(String.format(Locale.ENGLISH, String.format("%%.%sf", decimalPlaces), src));
+        return new JsonPrimitive(d);
+    }
 
 }

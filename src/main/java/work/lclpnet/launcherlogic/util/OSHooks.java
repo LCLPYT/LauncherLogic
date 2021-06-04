@@ -1,19 +1,14 @@
 package work.lclpnet.launcherlogic.util;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
-
 import work.lclpnet.launcherlogic.ls5.LS5Configuration;
+
+import java.io.*;
+import java.nio.file.Files;
 
 public class OSHooks {
 
@@ -43,9 +38,9 @@ public class OSHooks {
 
         public void extractFFMPEG(File from, File ffmpegDir, Progress progress) throws IOException {
             try (InputStream fi = Files.newInputStream(from.toPath());
-                    InputStream bi = new BufferedInputStream(fi);
-                    InputStream xzi = new XZCompressorInputStream(bi);
-                    ArchiveInputStream i = new TarArchiveInputStream(xzi)) {
+                 InputStream bi = new BufferedInputStream(fi);
+                 InputStream xzi = new XZCompressorInputStream(bi);
+                 ArchiveInputStream i = new TarArchiveInputStream(xzi)) {
                 ArchiveEntry entry;
                 while ((entry = i.getNextEntry()) != null) {
                     if (!i.canReadEntryData(entry)) {
@@ -119,8 +114,8 @@ public class OSHooks {
     private static final OSHandler handler;
 
     static {
-        if(System.getProperty("os.name").equalsIgnoreCase("Linux")) handler = new LinuxHandler();
-        else if(System.getProperty("os.name").contains("Windows")) handler = new WinHandler();
+        if (System.getProperty("os.name").equalsIgnoreCase("Linux")) handler = new LinuxHandler();
+        else if (System.getProperty("os.name").contains("Windows")) handler = new WinHandler();
         else handler = new OSHandler();
     }
 

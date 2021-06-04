@@ -11,7 +11,7 @@ public class Logging {
 
     public static void setupLogging() {
         File tempDir = new File(System.getProperty("java.io.tmpdir"), "launcher_logic");
-        if(!tempDir.exists() && !tempDir.mkdirs()) throw new IllegalStateException("Could not create temp directory");
+        if (!tempDir.exists() && !tempDir.mkdirs()) throw new IllegalStateException("Could not create temp directory");
 
         new Thread(() -> deleteOldFiles(tempDir), "Log file cleanup").start();
 
@@ -39,12 +39,12 @@ public class Logging {
 
     private static void deleteOldFiles(File tempDir) {
         File[] children = tempDir.listFiles();
-        if(children == null) return;
+        if (children == null) return;
 
         Arrays.stream(children)
                 .filter(file -> System.currentTimeMillis() - file.lastModified() > TimeUnit.DAYS.toMillis(14))
                 .forEach(file -> {
-                    if(!file.delete())
+                    if (!file.delete())
                         System.err.printf("Failed to delete old log file '%s'.%n", file.getName());
                 });
     }

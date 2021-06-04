@@ -7,26 +7,26 @@ import java.util.List;
 
 public class Modifications {
 
-	private String other;
-	private String otherMD5;
-	private List<Modification> mods;
-	
-	public String getOther() {
-		return other;
-	}
-	
-	public String getOtherMD5() {
-		return otherMD5;
-	}
+    private String other;
+    private String otherMD5;
+    private List<Modification> mods;
 
-	@Nullable
-	public List<Modification> getMods() {
-		return mods;
-	}
-	
-	@Override
-	public String toString() {
-		return new Gson().toJson(this);
-	}
-	
+    public String getOther() {
+        return other;
+    }
+
+    public String getOtherMD5() {
+        return otherMD5;
+    }
+
+    @Nullable
+    public List<Modification> getMods() {
+        return mods;
+    }
+
+    @Override
+    public String toString() {
+        return new Gson().toJson(this);
+    }
+
 }
