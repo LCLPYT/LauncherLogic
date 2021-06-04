@@ -1,19 +1,19 @@
 package work.lclpnet.launcherlogic.install;
 
-import java.io.IOException;
-import java.util.function.Supplier;
-
 import work.lclpnet.launcherlogic.util.Progress;
 import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
 
-public abstract class ProgressableConfigureableInstallation extends ConfigureableInstallation{
+import java.io.IOException;
+import java.util.function.Supplier;
+
+public abstract class ProgressiveConfigurableInstallation extends ConfigureableInstallation{
 
 	protected Progress progress;
-	private Supplier<String> host;
-	private Supplier<Integer> port;
-	private int steps;
+	private final Supplier<String> host;
+	private final Supplier<Integer> port;
+	private final int steps;
 	
-	public ProgressableConfigureableInstallation(String id, String configUrl, int steps, Supplier<String> host, Supplier<Integer> port) {
+	public ProgressiveConfigurableInstallation(String id, String configUrl, int steps, Supplier<String> host, Supplier<Integer> port) {
 		super(id, configUrl);
 		this.host = host;
 		this.port = port;

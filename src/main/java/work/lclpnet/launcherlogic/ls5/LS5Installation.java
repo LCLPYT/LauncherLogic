@@ -1,18 +1,24 @@
 package work.lclpnet.launcherlogic.ls5;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
+import work.lclpnet.launcherlogic.cmd.CommandInstall;
+import work.lclpnet.launcherlogic.install.Installation;
+import work.lclpnet.launcherlogic.install.ProgressiveConfigurableInstallation;
+import work.lclpnet.launcherlogic.install.SimpleConfiguration;
+import work.lclpnet.launcherlogic.install.UpdateStatus;
+import work.lclpnet.launcherlogic.util.*;
+
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.Reader;
+import java.io.*;
 import java.net.CookieManager;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -21,40 +27,9 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
 
-import javax.imageio.ImageIO;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-
-import work.lclpnet.launcherlogic.cmd.CommandCheckUpdate;
-import work.lclpnet.launcherlogic.cmd.CommandInstall;
-import work.lclpnet.launcherlogic.install.Installation;
-import work.lclpnet.launcherlogic.install.ProgressableConfigureableInstallation;
-import work.lclpnet.launcherlogic.install.SimpleConfiguration;
-import work.lclpnet.launcherlogic.install.UpdateStatus;
-import work.lclpnet.launcherlogic.util.ChecksumUtil;
-import work.lclpnet.launcherlogic.util.FileUtils;
-import work.lclpnet.launcherlogic.util.ImageUtil;
-import work.lclpnet.launcherlogic.util.NetworkUtil;
-import work.lclpnet.launcherlogic.util.OSHooks;
-import work.lclpnet.launcherlogic.util.ObjectMessager;
-import work.lclpnet.launcherlogic.util.Progress;
-import work.lclpnet.launcherlogic.util.ProgressCallbackClient;
-import work.lclpnet.launcherlogic.util.URLUtil;
-import work.lclpnet.launcherlogic.util.ZIPUtil;
-
-public class LS5Installation extends ProgressableConfigureableInstallation {
+public class LS5Installation extends ProgressiveConfigurableInstallation {
 
 	private static final String optionsURL = "https://lclpnet.work/lclplauncher/installations/ls5/options",
 			iconURL = "https://lclpnet.work/lclplauncher/installations/ls5/profile-icon",
@@ -78,18 +53,18 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			installation = Installation.fromInputStream(in);
 		}
 
-		if(CommandInstall.doProgressCallback) setupProgress("launcherLogicInstaller");
+		if(CommandInstall.doProgressCallback) setupProgress();
 		else super.progress = new Progress();
 
 		String forgeInstaller = (String) config.getVariable("forgeInstaller");
 
 		File tmp = new File(baseDir, "_tmp"),
 				dest = new File(tmp, "forge_installer.jar"),
-				resourcesFile = new File(tmp, "gamdir_resources.zip");
+				resourcesFile = new File(tmp, "game_dir_resources.zip");
 
 		progress.nextStep("Preparing installation");
 		if(tmp.exists()) FileUtils.recursiveDelete(tmp);
-		tmp.mkdirs();
+		if(!tmp.exists() && !tmp.mkdirs()) throw new IllegalStateException("Could not create temp directory.");
 		pushProfilesFile(tmp);
 		progress.update(1D);
 
@@ -124,13 +99,13 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		extractResources(resourcesFile, baseDir);
 		progress.update(1D);
 
-		progress.nextStep("Downloading optifine");
+		progress.nextStep("Downloading OptiFine");
 		try {
-			System.out.println("Downloading optifine... (optional)");
-			downloadOptifine(baseDir);
+			System.out.println("Downloading OptiFine... (optional)");
+			downloadOptiFine(baseDir);
 		} catch (Exception e) {
 			if(CommandInstall.debugMode) throw e;
-			else System.err.println("Optifine could not be installed. Installation will continue.");
+			else System.err.println("OptiFine could not be installed. Installation will continue.");
 		}
 		progress.update(1D);
 
@@ -143,7 +118,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		System.out.println("Downloading FFMPEG...");
 		boolean ffmpegFailed = false;
 		try {
-			downloadFFMPEG(baseDir, tmp);
+			downloadFFMPEG(tmp);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.out.println("Skipping FFMPEG steps, because an error occurred.");
@@ -159,8 +134,8 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		progress.update(1D);
 
 		progress.nextStep("Downloading youtube-dl...");
-		System.out.println("Donwloading youtube-dl...");
-		downloadYtdl(baseDir);
+		System.out.println("Downloading youtube-dl...");
+		downloadYtDl(baseDir);
 		progress.update(1D);
 
 		progress.nextStep("Cleaning up");
@@ -179,16 +154,16 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 		progress.end();
 	}
-	
+
 	private void popProfilesFile(File tmpDir) throws IOException {
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
-		
+
 		File target = new File(tmpDir, "launcher_profiles.json.tmp");
 		if(!target.exists()) return;
-		
+
 		try(FileInputStream in = new FileInputStream(target);
-				FileOutputStream out = new FileOutputStream(launcherProfilesFile)) {
+			FileOutputStream out = new FileOutputStream(launcherProfilesFile)) {
 			in.transferTo(out);
 		}
 	}
@@ -197,16 +172,16 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
 		if(!launcherProfilesFile.exists()) return;
-		
+
 		File target = new File(tmpDir, "launcher_profiles.json.tmp");
-		
+
 		try(FileInputStream in = new FileInputStream(launcherProfilesFile);
-				FileOutputStream out = new FileOutputStream(target)) {
+			FileOutputStream out = new FileOutputStream(target)) {
 			in.transferTo(out);
 		}
 	}
 
-	private void downloadYtdl(File baseDir) throws MalformedURLException, IOException {
+	private void downloadYtDl(File baseDir) throws IOException {
 		File dest = new File(baseDir, "bin" + File.separatorChar + OSHooks.getYTDLExeName());
 		NetworkUtil.transferFromUrlToFile(new URL(OSHooks.getYTDLDownloadLink()), dest, progress);
 	}
@@ -229,7 +204,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		if(!dir.renameTo(target)) throw new IllegalStateException(dir.getAbsolutePath() + " could not be renamed to " + target.getAbsolutePath());
 	}
 
-	private void downloadFFMPEG(File baseDir, File tmp) throws MalformedURLException, IOException {
+	private void downloadFFMPEG(File tmp) throws IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		String url = OSHooks.getFFMPEGUrl(modConfig);
 		System.out.println(url);
@@ -238,7 +213,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		NetworkUtil.transferFromUrlToFile(new URL(url), dest, progress);
 	}
 
-	private void createInstallationFile(File baseDir) throws FileNotFoundException, IOException {
+	private void createInstallationFile(File baseDir) throws IOException {
 		File dest = new File(baseDir, ".installation");
 		String json = installation.toString();
 		String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
@@ -247,7 +222,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		}
 	}
 
-	private void setupProgress(String mode) throws IOException {
+	private void setupProgress() throws IOException {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		Modifications modifications = modConfig.getModifications();
 
@@ -261,10 +236,12 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			}
 		}
 
-		if(this.progress.getProgressCallbackClient() != null) 
-			this.progress.getProgressCallbackClient().setClientName(mode);
+		if(this.progress.getProgressCallbackClient() != null)
+			this.progress.getProgressCallbackClient().setClientName("launcherLogicInstaller");
 
-		this.progress.steps += modifications.getMods().size();
+		List<Modification> mods = modifications.getMods();
+		if(mods != null) this.progress.steps += mods.size();
+
 		this.progress.initialPrint();
 	}
 
@@ -275,45 +252,13 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 	private void installMods(File baseDir, File tmp) throws Exception {
 		LS5Configuration modConfig = (LS5Configuration) super.config;
 		File modsDir = new File(baseDir, "mods");
-		modsDir.mkdirs();
+		if(!modsDir.exists() && !modsDir.mkdirs()) throw new IllegalStateException("Could not create mods directory.");
 
 		File tmpModsDir = new File(tmp, "mods");
-		tmpModsDir.mkdirs();
+		if(!tmpModsDir.exists() && !tmpModsDir.mkdirs()) throw new IllegalStateException("Could not create temp mods directory.");
 
 		Modifications modifications = modConfig.getModifications();
-		for(Modification mod : modifications.getMods()) {
-			progress.nextStep("Downloading '" + mod.getName() + "'");
-
-			File tmpDest = new File(mod.getSha256() != null ? tmpModsDir : modsDir, mod.getName());
-
-			try {
-				System.out.println("Downloading '" + mod.getName() + "' from '" + mod.getUrl() + "'...");
-				NetworkUtil.transferFromUrlToFile(new URL(mod.getUrl()), tmpDest, progress);
-				System.out.println("'" + mod.getName() + "' downloaded.");
-
-				if(mod.getSha256() != null) {
-					System.out.println("Validating modification file with SHA256 " + mod.getSha256() + " ...");
-					String sha256 = ChecksumUtil.getSha256(tmpDest);
-
-					if(!mod.getSha256().equals(sha256)) throw new SecurityException("Checksum mismatching for mod '" + mod.getName() + "'.");
-
-					System.out.println("Modification file '" + mod.getName() + "' is valid.");
-
-					System.out.println("Installing modification '" + mod.getName() + "' ...");
-					File dest = new File(modsDir, mod.getName());
-					try (InputStream in = new FileInputStream(tmpDest);
-							OutputStream out = new FileOutputStream(dest)) {
-						in.transferTo(out);
-					}
-					System.out.println("Modification '" + mod.getName() + "' installed.");
-				}
-			} catch (Exception e) {
-				if(CommandInstall.debugMode || !mod.isOptional()) throw e;
-				else System.err.println("Optional modification '" + mod.getName() + "' could not be installed. Installation will continue.");
-			}
-
-			progress.update(1D);
-		}
+		downloadMods(modsDir, tmpModsDir, modifications);
 
 		if(modifications.getOther() == null) return;
 
@@ -339,9 +284,49 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		}
 	}
 
-	private void downloadOptifine(File baseDir) throws Exception {
-		String optifine = (String) ((SimpleConfiguration) config).getVariable("optifine");
-		System.out.println("Looking for " + optifine + "...");
+	private void downloadMods(File modsDir, File tmpModsDir, Modifications modifications) throws IOException {
+		if(modifications.getMods() == null) return;
+
+		for (Modification mod : modifications.getMods()) {
+			progress.nextStep("Downloading '" + mod.getName() + "'");
+
+			File tmpDest = new File(mod.getSha256() != null ? tmpModsDir : modsDir, mod.getName());
+
+			try {
+				System.out.println("Downloading '" + mod.getName() + "' from '" + mod.getUrl() + "'...");
+				NetworkUtil.transferFromUrlToFile(new URL(mod.getUrl()), tmpDest, progress);
+				System.out.println("'" + mod.getName() + "' downloaded.");
+
+				if (mod.getSha256() != null) {
+					System.out.println("Validating modification file with SHA256 " + mod.getSha256() + " ...");
+					String sha256 = ChecksumUtil.getSha256(tmpDest);
+
+					if (!mod.getSha256().equals(sha256))
+						throw new SecurityException("Checksum mismatching for mod '" + mod.getName() + "'.");
+
+					System.out.println("Modification file '" + mod.getName() + "' is valid.");
+
+					System.out.println("Installing modification '" + mod.getName() + "' ...");
+					File dest = new File(modsDir, mod.getName());
+					try (InputStream in = new FileInputStream(tmpDest);
+						 OutputStream out = new FileOutputStream(dest)) {
+						in.transferTo(out);
+					}
+					System.out.println("Modification '" + mod.getName() + "' installed.");
+				}
+			} catch (Exception e) {
+				if (CommandInstall.debugMode || !mod.isOptional()) throw e;
+				else
+					System.err.println("Optional modification '" + mod.getName() + "' could not be installed. Installation will continue.");
+			}
+
+			progress.update(1D);
+		}
+	}
+
+	private void downloadOptiFine(File baseDir) throws Exception {
+		String optiFine = (String) ((SimpleConfiguration) config).getVariable("optifine");
+		System.out.println("Looking for " + optiFine + "...");
 
 		CookieManager manager = new CookieManager();
 		HttpClient client = HttpClient.newBuilder()
@@ -351,7 +336,7 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		/* First request */
 
 		HttpRequest downloadsRequest = HttpRequest.newBuilder()
-				.uri(new URI("https://optifine.net/downloads"))
+				.uri(new URI("https://optiFine.net/downloads"))
 				.GET()
 				.timeout(Duration.ofSeconds(10))
 				.build();
@@ -362,15 +347,15 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		/* Second request */
 
 		HttpRequest adloadxRequest = HttpRequest.newBuilder()
-				.uri(new URI("https://optifine.net/adloadx"))
-				.header("f", optifine)
+				.uri(new URI("https://optiFine.net/adloadx"))
+				.header("f", optiFine)
 				.GET()
 				.build();
 		System.out.println("GET " + adloadxRequest.uri() + "...");
-		var adloadxReponse = client.send(adloadxRequest, BodyHandlers.ofString());
-		System.out.println("Server responded with response code " + adloadxReponse.statusCode() + ".");
+		var adLoadXResponse = client.send(adloadxRequest, BodyHandlers.ofString());
+		System.out.println("Server responded with response code " + adLoadXResponse.statusCode() + ".");
 
-		Document d = Jsoup.parse(adloadxReponse.body());
+		Document d = Jsoup.parse(adLoadXResponse.body());
 		Elements elements = d.getElementsByTag("a");
 		Element downloadAnchor = null;
 		for(Element e : elements) {
@@ -379,27 +364,27 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			break;
 		}
 
-		if(downloadAnchor == null) throw new IllegalStateException("Could not find download anchor inside optifines html.");
+		if(downloadAnchor == null) throw new IllegalStateException("Could not find download anchor inside OptiFine's html.");
 
 		String href = downloadAnchor.attr("href");
 
 		var params = URLUtil.splitQuery(href.split("\\?")[1]);
-		params.put("f", optifine);
+		params.put("f", optiFine);
 
 		String query = URLUtil.joinQuery(params);
-		String downloadUrl = "https://optifine.net/downloadx?" + query;
+		String downloadUrl = "https://optiFine.net/downloadx?" + query;
 		System.out.println("Final OptiFine download url has been built: " + downloadUrl);
 
 		/* - */
 
-		File dest = new File(baseDir + "/mods", optifine);
-		dest.getParentFile().mkdirs();
+		File dest = new File(baseDir + "/mods", optiFine);
+		if(!dest.getParentFile().exists() && !dest.getParentFile().mkdirs()) System.err.println("Could not create parent directory of OptiFine mod.");
 
-		System.out.println("Downloading " + optifine + "...");
+		System.out.println("Downloading " + optiFine + "...");
 
 		NetworkUtil.transferFromUrlToFile(new URL(downloadUrl), dest, progress);
 
-		System.out.println(optifine + " has been downloaded into '" + dest.getAbsolutePath() + "'.");
+		System.out.println(optiFine + " has been downloaded into '" + dest.getAbsolutePath() + "'.");
 	}
 
 	private void extractResources(File resources, File baseDir) throws IOException {
@@ -412,13 +397,13 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 	private void injectProfile(File dir) throws Exception{
 		backupProfilesFile();
-		
+
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
 
 		JsonObject json;
 		try (InputStream in = new FileInputStream(launcherProfilesFile);
-				Reader reader = new InputStreamReader(in)) {
+			 Reader reader = new InputStreamReader(in)) {
 			json = new Gson().fromJson(reader, JsonObject.class);
 			JsonObject profiles = json.get("profiles").getAsJsonObject();
 			if(profiles.has("ls5")) profiles.remove("ls5");
@@ -455,16 +440,16 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 
 		return profile;
 	}
-	
+
 	public static void backupProfilesFile() throws IOException{
 		File baseDir = FileUtils.getMCDir();
 		File launcherProfilesFile = new File(baseDir, "launcher_profiles.json");
 		if(!launcherProfilesFile.exists()) return;
-		
+
 		File target = new File(baseDir, "launcher_profiles.json.backup");
-		
+
 		try(FileInputStream in = new FileInputStream(launcherProfilesFile);
-				FileOutputStream out = new FileOutputStream(target)) {
+			FileOutputStream out = new FileOutputStream(target)) {
 			in.transferTo(out);
 		}
 	}
@@ -473,14 +458,14 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 		String classpath = OSHooks.getForgeInstallerClasspath(super.commandDelegate.llForgeInstallerJar, installerJar);
 
 		ProcessBuilder builder = new ProcessBuilder(
-				super.commandDelegate.javaExe.getAbsolutePath(), 
+				super.commandDelegate.javaExe.getAbsolutePath(),
 				"-Xms1G",
 				"-Xmx2G",
-				"-cp", 
-				classpath, 
-				"work.lclpnet.forgeinstaller.ForgeInstaller", 
-				CommandInstall.getPcHost() != null ? CommandInstall.getPcHost() : "none", 
-						String.valueOf(CommandInstall.getPcPort()));
+				"-cp",
+				classpath,
+				"work.lclpnet.forgeinstaller.ForgeInstaller",
+				CommandInstall.getPcHost() != null ? CommandInstall.getPcHost() : "none",
+				String.valueOf(CommandInstall.getPcPort()));
 		builder.inheritIO();
 		Process p = builder.start();
 		int exit = p.waitFor();
@@ -501,50 +486,50 @@ public class LS5Installation extends ProgressableConfigureableInstallation {
 			installation = Installation.fromInputStream(in);
 		}
 
-		ObjectMessager messager;
+		ObjectMessenger messenger;
 		try {
-			messager = CommandCheckUpdate.doProgressCallback 
-					? new ObjectMessager(new ProgressCallbackClient(CommandCheckUpdate.pcHost, CommandCheckUpdate.pcPort)) 
-							: new ObjectMessager();
+			messenger = CommandCheckUpdate.doProgressCallback
+					? new ObjectMessenger(new ProgressCallbackClient(CommandCheckUpdate.pcHost, CommandCheckUpdate.pcPort))
+					: new ObjectMessenger();
 		} catch (IOException e) {
 			if(CommandInstall.debugMode) throw e;
 			else {
-				messager = new ObjectMessager();
+				messenger = new ObjectMessenger();
 				System.out.println("WARNING: Could not connect to the progress callback server. Update checking will continue without progress callback.");
 			}
 		}
 
-		if(messager.getProgressCallbackClient() != null) {
+		if(messenger.getProgressCallbackClient() != null) {
 			System.out.println("Successfully connected to progress callback server.");
-			messager.getProgressCallbackClient().setClientName("launcherLogicUpdater");
+			messenger.getProgressCallbackClient().setClientName("launcherLogicUpdater");
 		}
 
 		File dest = new File(baseDir, ".installation");
 		if(!dest.exists()) {
-			printAndSend(messager, UpdateStatus.INSTALLATION_NOT_EXIST);
+			printAndSend(messenger, UpdateStatus.INSTALLATION_NOT_EXIST);
 			return;
 		}
 
 		String base64;
 		try (InputStream in = new FileInputStream(dest);
-				ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			in.transferTo(out);
-			base64 = new String(out.toByteArray(), StandardCharsets.UTF_8);
+			base64 = out.toString(StandardCharsets.UTF_8);
 		}
 
 		String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
 		Installation localInstall = new Gson().fromJson(decoded, Installation.class);
 
-		if(localInstall.getVersionNumber() < installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_OUTDATED);
-		else if(localInstall.getVersionNumber() == installation.getVersionNumber()) printAndSend(messager, UpdateStatus.INSTALLATION_UP_TO_DATE);
-		else printAndSend(messager, UpdateStatus.INSTALLATION_FUTURE);
+		if(localInstall.getVersionNumber() < installation.getVersionNumber()) printAndSend(messenger, UpdateStatus.INSTALLATION_OUTDATED);
+		else if(localInstall.getVersionNumber() == installation.getVersionNumber()) printAndSend(messenger, UpdateStatus.INSTALLATION_UP_TO_DATE);
+		else printAndSend(messenger, UpdateStatus.INSTALLATION_FUTURE);
 
 		System.out.println("Finished.");
-		messager.end();
+		messenger.end();
 	}
 
-	private static void printAndSend(ObjectMessager messager, UpdateStatus o) {
-		messager.send(o);
+	private static void printAndSend(ObjectMessenger messenger, UpdateStatus o) {
+		messenger.send(o);
 		System.out.println("[Result]" + o.status);
 	}
 

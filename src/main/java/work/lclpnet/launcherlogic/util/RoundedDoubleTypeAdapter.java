@@ -1,14 +1,14 @@
 package work.lclpnet.launcherlogic.util;
 
-import java.lang.reflect.Type;
-import java.util.Locale;
-
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
-public class RoundedDoubleTypeAdapter implements JsonSerializer<Double>{
+import java.lang.reflect.Type;
+import java.util.Locale;
+
+public class RoundedDoubleTypeAdapter implements JsonSerializer<Double> {
 
 	protected int decimalPlaces;
 	

@@ -1,15 +1,15 @@
 package work.lclpnet.launcherlogic.ls5;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.google.gson.Gson;
+
+import javax.annotation.Nullable;
+import java.util.List;
 
 public class Modifications {
 
 	private String other;
 	private String otherMD5;
-	private List<Modification> mods = new ArrayList<>();
+	private List<Modification> mods;
 	
 	public String getOther() {
 		return other;
@@ -18,7 +18,8 @@ public class Modifications {
 	public String getOtherMD5() {
 		return otherMD5;
 	}
-	
+
+	@Nullable
 	public List<Modification> getMods() {
 		return mods;
 	}

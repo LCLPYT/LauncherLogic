@@ -1,9 +1,5 @@
 package work.lclpnet.launcherlogic.cmd;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.Callable;
-
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
@@ -12,6 +8,10 @@ import work.lclpnet.launcherlogic.install.InstallationObject;
 import work.lclpnet.launcherlogic.install.InstallationObjects;
 import work.lclpnet.launcherlogic.util.CommonHelper;
 import work.lclpnet.launcherlogic.util.FileUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.Callable;
 
 @Command(
 		name = "install",
@@ -36,7 +36,7 @@ public class CommandInstall implements Callable<Integer>{
 	@Option(names = {"--progress-callback"}, description = "Specifies progress callback host and port. <host>:<port>")
 	String progressCallback = null;
 	
-	@Option(names = {"--java-exe"}, description = "Path to the java executeable", showDefaultValue = Visibility.ALWAYS)
+	@Option(names = {"--java-exe"}, description = "Path to the java executable", showDefaultValue = Visibility.ALWAYS)
 	public File javaExe = new File(FileUtils.getCurrentDir(), "runtime/bin/java.exe");
 	
 	@Option(names = {"--launcher-forge-installer-jar"}, description = "Path to the launcher logic forge installer jar.", showDefaultValue = Visibility.ALWAYS)

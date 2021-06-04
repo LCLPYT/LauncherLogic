@@ -1,20 +1,20 @@
 package work.lclpnet.launcherlogic.util;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-
 public class ProgressCallbackClient {
 
-	private static List<Socket> openSockets = new ArrayList<>();
+	private static final List<Socket> openSockets = new ArrayList<>();
 	
-	private String host;
-	private int port;
+	private final String host;
+	private final int port;
 	private transient Socket socket;
 	private transient Gson gson = null;
 
@@ -44,7 +44,7 @@ public class ProgressCallbackClient {
 	public void setClientName(String name) {
 		JsonObject obj = new JsonObject();
 		obj.addProperty("setname", name);
-		String s = obj.toString() + "\n";
+		String s = obj + "\n";
 		send(s.getBytes(StandardCharsets.UTF_8));
 	}
 	
@@ -52,11 +52,7 @@ public class ProgressCallbackClient {
 		s += "\n";
 		send(s.getBytes(StandardCharsets.UTF_8));
 	}
-	
-	public void send(Object o) {
-		send(gson.toJson(o));
-	}
-	
+
 	public Gson getGson() {
 		return gson;
 	}

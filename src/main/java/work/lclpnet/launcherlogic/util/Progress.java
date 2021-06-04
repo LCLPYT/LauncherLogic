@@ -1,8 +1,8 @@
 package work.lclpnet.launcherlogic.util;
 
-import java.util.function.Consumer;
-
 import work.lclpnet.launcherlogic.cmd.CommandInstall;
+
+import java.util.function.Consumer;
 
 public class Progress extends CallbackHolder implements Consumer<Double>{
 
@@ -36,8 +36,10 @@ public class Progress extends CallbackHolder implements Consumer<Double>{
 	}
 	
 	public void nextStep(String title) {
+		if(!CommandInstall.doProgressCallback) return;
+
 		step++;
-		if(steps > steps) throw new IllegalStateException("Step count is greater than steps.");
+		if(step > steps) throw new IllegalStateException("Step count is greater than steps.");
 		stepProgress = 0D;
 		status = title;
 		printProgress();
